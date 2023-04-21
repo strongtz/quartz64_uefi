@@ -1,4 +1,4 @@
-BOARDS ?= QUARTZ64 SOQUARTZ ROC-RK3566-PC ROC-RK3568-PC
+BOARDS ?= ROCK-3A
 TARGET ?= RELEASE
 
 .PHONY: all
@@ -25,6 +25,23 @@ sdcard: uefi
 		    seek=20480 conv=notrunc;					\
 	done
 	rm -f sdcard.img
+
+.PHONY: spinor
+spinor: uefi
+	rm -f spinor.img
+	fallocate -l 16M spinor.img
+	parted -s spinor.img mklabel gpt
+	parted -s spinor.img unit s mkpart loader 64 8MiB
+	parted -s spinor.img unit s mkpart uboot 8MiB 32724
+
+	for board in $(BOARDS); do				\
+		cp spinor.img $${board}_EFI_spinor.img;				\
+		dd if=idblock.bin of=$${board}_EFI_spinor.img 			\
+		    seek=64 conv=notrunc;						\
+		dd if=$${board}_EFI.itb of=$${board}_EFI_spinor.img	\
+		    seek=16384 conv=notrunc;					\
+	done
+	rm -f spinor.img
 
 .PHONY: release
 release: sdcard
